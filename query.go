@@ -15,18 +15,13 @@ import (
 )
 
 type Query struct {
-	Q      string `json:"q"`
-	result []Log
+	Q string `json:"q"`
 }
 
-func (q *Query) Result() []Log {
-	return q.result
-}
-
-func NewQuery(q string, col string) interface{} {
+func (mem *Mem) doQuery(q string, col string) interface{} {
 
 	var logs []Log
-	logs = append(logs, query(col)...)
+	logs = append(logs, mem.query(col)...)
 
 	b, err := json.MarshalIndent(logs, "", "  ")
 	if err != nil {
@@ -44,9 +39,8 @@ func NewQuery(q string, col string) interface{} {
 	return v
 }
 
-func query(col string) []Log {
+func (mem *Mem) query(col string) []Log {
 	l := []Log{}
-	mem := M
 	mem.items.Range(func(key, value interface{}) bool {
 		item := value.(*item)
 		if item.log.Collection == col {

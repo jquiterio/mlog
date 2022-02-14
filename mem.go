@@ -13,15 +13,17 @@ import (
 	"time"
 )
 
-var M *Mem
+// var M *Mem
+// var D *Disk
 
-func init() {
-	M = NewMem(time.Duration(24) * time.Hour)
-}
+// func init() {
+// 	M = NewMem(time.Duration(2) * time.Minute)
+// }
 
 type Mem struct {
-	items sync.Map
-	close chan struct{}
+	retTime time.Duration
+	items   sync.Map
+	close   chan struct{}
 }
 
 func (m *Mem) Close() {
@@ -35,37 +37,13 @@ type item struct {
 
 func NewMem(keeTime time.Duration) *Mem {
 	m := &Mem{
-		close: make(chan struct{}),
+		close:   make(chan struct{}),
+		retTime: keeTime,
 	}
 	d := os.Getenv("MEM_DISK")
 	if d == "/tmp/mlog" {
 		panic("MEM_DISK env var not set")
 	}
-	disk, err := NewDisk(d)
-	if err != nil {
-		panic(err)
-	}
-
-	go func() {
-		ticker := time.NewTicker(keeTime)
-		defer ticker.Stop()
-		for {
-			select {
-			case <-ticker.C:
-				now := time.Now().UnixNano()
-				m.items.Range(func(k, v interface{}) bool {
-					item := v.(*item)
-					if item.expires < now {
-						disk.WriteLog(item.log)
-						m.items.Delete(k)
-					}
-					return true
-				})
-			case <-m.close:
-				return
-			}
-		}
-	}()
 	return m
 }
 
@@ -81,6 +59,6 @@ func (m *Mem) Get(key string) *Log {
 func (m *Mem) Set(log Log) {
 	m.items.Store(log.ID, &item{
 		log:     log,
-		expires: time.Now().UnixNano() + time.Hour.Nanoseconds(),
+		expires: time.Now().Add(1 * time.Minute).UnixNano(),
 	})
 }
