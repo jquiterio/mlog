@@ -9,7 +9,6 @@ package main
 
 import (
 	"encoding/json"
-	"fmt"
 
 	"github.com/elgs/jsonql"
 )
@@ -27,7 +26,6 @@ func (mem *Mem) doQuery(q string, col string) interface{} {
 	if err != nil {
 		return []Log{}
 	}
-	fmt.Println("QUERY JSON: ", string(b))
 	parser, err := jsonql.NewStringQuery(string(b))
 	if err != nil {
 		return []Log{}

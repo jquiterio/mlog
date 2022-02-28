@@ -21,9 +21,10 @@ import (
 // }
 
 type Mem struct {
-	retTime time.Duration
-	items   sync.Map
-	close   chan struct{}
+	retTime    time.Duration
+	items      sync.Map
+	colections []string
+	close      chan struct{}
 }
 
 func (m *Mem) Close() {
@@ -61,4 +62,22 @@ func (m *Mem) Set(log Log) {
 		log:     log,
 		expires: time.Now().Add(1 * time.Minute).UnixNano(),
 	})
+
+}
+
+func (m *Mem) GetCollections() []string {
+	return m.colections
+}
+
+func (m *Mem) CollectionExist(col string) bool {
+	return contains(m.colections, col)
+}
+
+func contains(l []string, s string) bool {
+	for _, v := range l {
+		if v == s {
+			return true
+		}
+	}
+	return false
 }

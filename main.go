@@ -41,6 +41,7 @@ func main() {
 					item := v.(*item)
 					if item.expires > 0 && now > item.expires {
 						mem.items.Delete(k)
+						mem.Close()
 					}
 					return true
 				})
@@ -50,11 +51,17 @@ func main() {
 		}
 	}()
 
-	e.GET("/", func(c echo.Context) error {
+	e.GET("/status", func(c echo.Context) error {
+		return c.JSON(http.StatusOK, echo.Map{
+			"status": "OK",
+		})
+	})
+
+	e.GET("/admin/logs", func(c echo.Context) error {
 		return c.JSON(200, mem.getAll())
 	})
 
-	e.GET("/:col", func(c echo.Context) error {
+	e.GET("/admin/logs/:col", func(c echo.Context) error {
 		col := c.Param("col")
 		return c.JSON(200, mem.getLogsByCollection(col))
 	})
@@ -63,7 +70,6 @@ func main() {
 		// {"collection": "test","source": "test", "msg": {"something": "data", "otherthing": "data"}}
 		var rlog Log
 		if err := c.Bind(&rlog); err != nil {
-			fmt.Println("bind error: ", err.Error())
 			return c.JSON(400, echo.Map{
 				"error": err.Error(),
 			})
@@ -75,15 +81,36 @@ func main() {
 			return c.JSON(400, map[string]string{"error": "msg is required"})
 		}
 		log := NewLog(rlog.Collection, rlog.CorrelationId, rlog.Src, rlog.Msg)
+		//defer mem.Close()
 		mem.Set(*log)
+		if !mem.CollectionExist(log.Collection) {
+			mem.colections = append(mem.colections, log.Collection)
+		}
 		return c.JSON(201, log)
 	})
 
-	e.POST("/q/:col", func(c echo.Context) error {
+	e.GET("/admin/logs/collections", func(c echo.Context) error {
+		return c.JSON(200, mem.GetCollections())
+	})
+
+	e.POST("/admin/logs/:col/query", func(c echo.Context) error {
 		col := c.Param("col")
 		var q Query
 		if err := c.Bind(&q); err != nil {
 			return echo.NewHTTPError(http.StatusBadRequest, err.Error())
+		}
+		if q.Q == "" {
+			return c.JSON(400, echo.Map{
+				"error": "query is required",
+				"usage": []string{
+					`something='data'`,
+					`something='data' && otherthing='data'`,
+					`something='data' || otherthing='data'`,
+					`something='data' && otherthing='data' || something='data'`,
+					`object.field='data`,
+					`msg.status=200`,
+				},
+			})
 		}
 		res := mem.doQuery(q.Q, col)
 		return c.JSON(200, res)
@@ -94,16 +121,16 @@ func main() {
 	e.Use(middleware.Recover())
 
 	// server
-	port := os.Getenv("PORT")
-	if port == "" {
-		port = "8003"
+	PORT := os.Getenv("PORT")
+	ADDRESS := os.Getenv("ADDRESS")
+	if PORT == "" {
+		PORT = "8003"
 	}
-	s := &http.Server{
-		Addr:    "127.0.0.1:" + port,
-		Handler: e,
+	if ADDRESS == "" {
+		ADDRESS = "127.0.0.1"
 	}
-	fmt.Println("listening on port: ", s.Addr)
-	s.ListenAndServe()
+	addr := fmt.Sprintf("%s:%s", ADDRESS, PORT)
+	e.Logger.Fatal(e.Start(addr))
 }
 
 func (m *Mem) getAll() (logs []Log) {
