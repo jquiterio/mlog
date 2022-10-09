@@ -8,7 +8,6 @@
 package main
 
 import (
-	"os"
 	"sync"
 	"time"
 )
@@ -41,10 +40,6 @@ func NewMem(keeTime time.Duration) *Mem {
 		close:   make(chan struct{}),
 		retTime: keeTime,
 	}
-	d := os.Getenv("MEM_DISK")
-	if d == "/tmp/mlog" {
-		panic("MEM_DISK env var not set")
-	}
 	return m
 }
 
@@ -62,7 +57,6 @@ func (m *Mem) Set(log Log) {
 		log:     log,
 		expires: time.Now().Add(1 * time.Minute).UnixNano(),
 	})
-
 }
 
 func (m *Mem) GetCollections() []string {

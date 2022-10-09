@@ -29,10 +29,10 @@ func main() {
 		panic(err)
 	}
 	mem := NewMem(dur)
+	ticker := time.NewTicker(mem.retTime)
+	defer ticker.Stop()
 
 	go func() {
-		ticker := time.NewTicker(mem.retTime)
-		defer ticker.Stop()
 		for {
 			select {
 			case <-ticker.C:
@@ -41,7 +41,6 @@ func main() {
 					item := v.(*item)
 					if item.expires > 0 && now > item.expires {
 						mem.items.Delete(k)
-						mem.Close()
 					}
 					return true
 				})
@@ -80,7 +79,7 @@ func main() {
 		if rlog.Msg == nil {
 			return c.JSON(400, map[string]string{"error": "msg is required"})
 		}
-		log := NewLog(rlog.Collection, rlog.CorrelationId, rlog.Src, rlog.Msg)
+		log := NewLog(rlog.Collection, rlog.CorrelationId, rlog.Type, rlog.Src, rlog.Msg)
 		//defer mem.Close()
 		mem.Set(*log)
 		if !mem.CollectionExist(log.Collection) {
@@ -119,6 +118,7 @@ func main() {
 	// midleware
 	e.Use(middleware.Logger())
 	e.Use(middleware.Recover())
+	e.Use(middleware.CORS())
 
 	// server
 	PORT := os.Getenv("PORT")

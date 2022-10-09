@@ -16,13 +16,14 @@ import (
 type Log struct {
 	ID            string                 `json:"id"`
 	Time          string                 `json:"time"`
+	Type          string                 `json:"type"`
 	Src           string                 `json:"source"`
 	Collection    string                 `json:"collection"`
 	CorrelationId string                 `json:"correlation_id"` //  correlation Id
 	Msg           map[string]interface{} `json:"msg"`
 }
 
-func NewLog(col, correlId, src string, msg map[string]interface{}) *Log {
+func NewLog(col, correlId, tp, src string, msg map[string]interface{}) *Log {
 	return &Log{
 		ID:            uuid.NewV4().String(),
 		Time:          time.Now().Format(time.RFC3339),
